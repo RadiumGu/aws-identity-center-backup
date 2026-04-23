@@ -2,6 +2,10 @@
 
 AWS IAM Identity Center 账号级备份与灾备（DR）工具集 + Runbook。
 
+> 同时是一个 *Agent Skill*：Kiro / Claude Code / OpenClaw 可直接加载 `SKILL.md` 驱动全流程。
+> 安装：`git clone https://github.com/RadiumGu/aws-identity-center-backup.git ~/.kiro/skills/identity-center-backup`
+> （Claude Code: `~/.claude/skills/`；OpenClaw: `~/.openclaw/skills/` 或项目 `skills/`）
+
 ## 场景
 
 客户有 1000+ Kiro 订阅用户通过 Identity Center 登录主账号，需要在另一个
