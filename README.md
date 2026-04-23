@@ -4,6 +4,25 @@
 
 AWS IAM Identity Center 账号级备份与灾备（DR）工具集 + Runbook。
 
+## ⚠️ 覆盖边界（必读）
+
+本方案是分层 DR，**不要用一个工具解决整个 Kiro 订阅用户的 DR 问题**。
+
+| 层 | 覆盖范围 | 本 repo 提供 |
+|----|---------|------------|
+| **L1 — IdC 登录能力** | users / groups / memberships / permission sets / account & app assignments | ✅ `scripts/backup_*` + `scripts/restore_*` + `upstream/mist` |
+| **L2 — Kiro 订阅** | Kiro Application（IdC 里）+ `user-subscriptions:Claim` + overage config | ✅ `scripts/*_kiro_subscriptions.py` + `docs/KIRO-CUTOVER.md` |
+| **L3 — Kiro 侧用户资产** | conversation 历史 / profile / CodeWhisperer tagging / Q Developer dashboard | ❌ **自建方案做不到，依赖 Kiro 产品路线图** |
+
+**真实 RTO：天级，不是秒级。** 切换当天需要：
+1. target 账号手工开通 Kiro 企业订阅（含企业支持审核）
+2. 跑 L1 + L2 恢复脚本
+3. 1000 用户收邀请邮件重设密码 + 重注册 MFA（helpdesk 密集期）
+4. 和 Kiro 团队对齐 L3 数据迁移（通常不可迁）
+
+客户原始需求是「无缝切换」的，把这个方案交付之前**必须先和客户重新对齐 SLA**。
+
+
 > 同时是一个 *Agent Skill*：Kiro / Claude Code / OpenClaw 可直接加载 `SKILL.md` 驱动全流程。
 > 安装：`git clone https://github.com/RadiumGu/aws-identity-center-backup.git ~/.kiro/skills/identity-center-backup`
 > （Claude Code: `~/.claude/skills/`；OpenClaw: `~/.openclaw/skills/` 或项目 `skills/`）

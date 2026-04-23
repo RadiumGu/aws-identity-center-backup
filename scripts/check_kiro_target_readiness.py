@@ -97,7 +97,19 @@ def main():
     # 2. Users/groups presence
     with open(args.source_snapshot) as f:
         src = json.load(f)
-    src_subs = src["Subscriptions"]
+    # Support both schemas: new (UserClaims/GroupClaims) and legacy (Subscriptions).
+    src_subs = []
+    for c in src.get("UserClaims", []):
+        src_subs.append({"username": c.get("UserName"),
+                         "subscriptionType": (c.get("ClaimData") or {}).get("SubscriptionType")
+                                              or c.get("ClaimType") or "UNKNOWN",
+                         "status": "ACTIVE"})
+    for c in src.get("GroupClaims", []):
+        src_subs.append({"username": c.get("GroupDisplayName"),
+                         "subscriptionType": (c.get("ClaimData") or {}).get("SubscriptionType")
+                                              or c.get("ClaimType") or "UNKNOWN",
+                         "status": "ACTIVE"})
+    src_subs.extend(src.get("Subscriptions", []))
     src_names = {(s.get("username") or s.get("UserName") or "")
                  for s in src_subs if s.get("status", "").upper() in ("ACTIVE", "PENDING")}
     src_names.discard("")

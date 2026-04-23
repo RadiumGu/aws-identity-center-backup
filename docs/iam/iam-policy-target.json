@@ -1,0 +1,82 @@
+{
+  "Version": "2012-10-17",
+  "Comment": "Minimum permissions to restore IAM Identity Center state into TARGET account. Attach to the principal running restore_*.py.",
+  "Statement": [
+    {
+      "Sid": "IdentityStoreWrite",
+      "Effect": "Allow",
+      "Action": [
+        "identitystore:ListUsers",
+        "identitystore:ListGroups",
+        "identitystore:ListGroupMemberships",
+        "identitystore:CreateUser",
+        "identitystore:CreateGroup",
+        "identitystore:CreateGroupMembership"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SsoAdminWrite",
+      "Effect": "Allow",
+      "Action": [
+        "sso:ListInstances",
+        "sso:DescribeInstance",
+        "sso:ListPermissionSets",
+        "sso:DescribePermissionSet",
+        "sso:CreatePermissionSet",
+        "sso:UpdatePermissionSet",
+        "sso:AttachManagedPolicyToPermissionSet",
+        "sso:DetachManagedPolicyFromPermissionSet",
+        "sso:AttachCustomerManagedPolicyReferenceToPermissionSet",
+        "sso:DetachCustomerManagedPolicyReferenceFromPermissionSet",
+        "sso:PutInlinePolicyToPermissionSet",
+        "sso:DeleteInlinePolicyFromPermissionSet",
+        "sso:PutPermissionsBoundaryToPermissionSet",
+        "sso:DeletePermissionsBoundaryFromPermissionSet",
+        "sso:ListTagsForResource",
+        "sso:TagResource",
+        "sso:UntagResource",
+        "sso:ListAccountsForProvisionedPermissionSet",
+        "sso:ProvisionPermissionSet",
+        "sso:DescribePermissionSetProvisioningStatus",
+        "sso:CreateAccountAssignment",
+        "sso:ListAccountAssignments",
+        "sso:ListApplications",
+        "sso:CreateApplicationAssignment"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "KiroSubscriptionsWrite",
+      "Effect": "Allow",
+      "Action": [
+        "user-subscriptions:ListClaims",
+        "user-subscriptions:CreateClaim",
+        "user-subscriptions:DeleteClaim",
+        "user-subscriptions:UpdateClaim",
+        "user-subscriptions:SetOverageConfig"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IamBootstrap",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole",
+        "iam:AttachRolePolicy",
+        "iam:GetRole"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "OrganizationsRead",
+      "Effect": "Allow",
+      "Action": [
+        "organizations:ListAccounts",
+        "organizations:DescribeAccount",
+        "organizations:DescribeOrganization"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

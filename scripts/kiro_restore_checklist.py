@@ -29,7 +29,27 @@ def main():
     with open(args.input) as f:
         data = json.load(f)
 
-    subs = data["Subscriptions"]
+    subs = []
+    # New schema from backup_kiro_subscriptions.py (UserClaims / GroupClaims
+    # keyed by UserName / GroupDisplayName).
+    for c in data.get("UserClaims", []):
+        subs.append({
+            "username": c.get("UserName") or "<unknown>",
+            "subscriptionType": (c.get("ClaimData") or {}).get("SubscriptionType")
+                                or c.get("ClaimType") or "UNKNOWN",
+            "status": "ACTIVE",
+            "aggregated": "USER",
+        })
+    for c in data.get("GroupClaims", []):
+        subs.append({
+            "username": c.get("GroupDisplayName") or "<unknown-group>",
+            "subscriptionType": (c.get("ClaimData") or {}).get("SubscriptionType")
+                                or c.get("ClaimType") or "UNKNOWN",
+            "status": "ACTIVE",
+            "aggregated": "GROUP",
+        })
+    # Legacy schema (pre-sprint): a flat Subscriptions list.
+    subs.extend(data.get("Subscriptions", []))
     by_plan = defaultdict(lambda: {"USER": [], "GROUP": []})
     totals = defaultdict(int)
 
@@ -48,8 +68,8 @@ def main():
     out = []
     out.append(f"# Kiro Subscription Restore Checklist")
     out.append("")
-    out.append(f"- Source instance: `{data['InstanceArn']}`")
-    out.append(f"- Captured at:     `{data['CapturedAt']}`")
+    out.append(f"- Source instance: `{data.get('InstanceArn') or data.get('SourceApplicationArn') or '<unknown>'}`")
+    out.append(f"- Captured at:     `{data.get('CapturedAt', 'n/a')}`")
     out.append(f"- Total records:   {len(subs)}")
     out.append("")
     out.append("## Step 1 — Purchase seats on the TARGET account")

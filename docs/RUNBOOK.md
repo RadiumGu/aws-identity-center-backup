@@ -11,7 +11,47 @@
 
 ---
 
-## 0. 决策树：先判断身份源
+## 0. 覆盖边界（必读）
+
+本方案是分层 DR：
+
+- **L1 — IdC 登录能力 DR**（本 runbook + `scripts/backup_*` / `restore_*` + `upstream/mist`）
+- **L2 — Kiro 订阅 DR**（`scripts/*_kiro_subscriptions.py` + `docs/KIRO-CUTOVER.md`）
+- **L3 — Kiro 侧用户历史数据**（conversation / profile / CodeWhisperer tagging）：**自建方案做不到，依赖 Kiro 产品路线图**
+
+⚠️ **不要把 L1 当成完整 DR 方案交付**。
+切换当天如果只跑 L1：用户能登 AWS 但 Kiro 里没订阅、没历史数据。这不是「无缝切换」。
+
+**真实 RTO 下限 > 1 工作日**：
+- target Kiro 订阅开通（含企业支持审核）
+- 1000 用户 MFA 重注册
+- CMP 跨账号预铺
+- Kiro application 重建（Kiro console 自动）
+
+### 0.1 架构前置建议（和客户先谈这个）
+
+Identity Center 自身已经是 region 级高可用（底层跨 AZ），所谓「账号级故障」的真实触发场景：
+
+| 场景 | delegated admin 能救？ | external IdP 能救？ |
+|------|----------------------|---------------------|
+| Org 管理账号被误删 / suspend | ⚠️ 不能（IdC 实例仍在管理账号下，跟着挂） | ✅ 能（换新 Org + 接同一 IdP） |
+| 管理账号 root 被锁 | ✅ 能（成员账号仍可操作） | ✅ 能 |
+| 合规冻结 | 取决于冻结范围 | 取决于冻结范围 |
+
+真正有效的架构改造路径（强推，**给客户先谈这个，再谈备份**）：
+
+1. **Identity Center 身份源改用 external IdP**（Okta / Entra / Google）—— 这是**跨 Org DR 唯一真正优雅的路径**。IdC 降级成 SAML consumer，target 连接同一 IdP 后 SCIM 自动同步用户/组
+2. **启用 Organizations delegated administrator**：把 Identity Center 的日常管理委托给专用 identity account。⚠️ 这**只降低日常误操作暴露面**，不解决管理账号本身被删/suspend 的场景
+3. **Permission Sets + Assignments 全部 IaC 化**（参考 `upstream/ic-extensions/` 或 `aws-samples/single-stage-aws-iam-identity-center-pipeline`，CI 驱动）
+4. **Kiro 订阅 claim 定期备份到 S3**（跑 `scripts/backup_kiro_subscriptions.py` + EventBridge）
+
+如果客户同意 1+2+3+4，就不需要「账号级克隆 Identity Center」；灾难时把 IdP 指向新 identity account、跑一次 L2 Kiro 订阅恢复即可。
+
+以下流程针对 **客户坚持要克隆一套 Identity Center + Kiro 订阅到新账号** 的场景。
+
+---
+
+## 0.2 决策树：先判断身份源
 
 Identity Center 支持三种 identity source，*灾备方案完全不同*：
 
@@ -22,25 +62,6 @@ Identity Center 支持三种 identity source，*灾备方案完全不同*：
 | *Identity Center 自建目录* | 必须脚本导出 + 重建 | ✅ 全套脚本都要用 |
 
 > 🔑 *行动项*：找客户确认身份源。AWS 控制台 → IAM Identity Center → Settings → "Identity source" 一栏。
-
----
-
-## 1. 架构建议（重要）
-
-Identity Center 自身已经是 region-级高可用服务（底层跨 AZ），所谓"账号级故障"的实际触发场景通常是：
-- Org 管理账号被误删除 / 被 suspend
-- 账号凭证被吊销 / 合规冻结
-- 管理账号 root 被锁
-
-*强烈建议*架构上做一次性修正（再谈备份）：
-
-1. *启用 Organizations delegated administrator*：把 Identity Center 的管理委托给 Org 里一个专用的 *identity account*，业务账号不碰 Identity Center。即便业务账号出事，登录链路不受影响。
-2. *Identity Center 自身不要放主账号*：同理。
-3. *Permission Sets + Assignments 全部 IaC 化*：用 `aws-samples/single-stage-aws-iam-identity-center-pipeline` 或本 repo 里的 JSON 备份，CI 驱动。
-
-如果客户同意按上面修正架构，就不需要"账号级克隆 Identity Center"了，只要灾难时把 Org 换到 standby Org 或新建的 identity account 重新托管。
-
-以下流程针对 *客户坚持要克隆一套 Identity Center 到新账号* 的场景。
 
 ---
 

@@ -28,6 +28,7 @@ import logging
 import sys
 
 import boto3
+from botocore.exceptions import ClientError
 
 log = logging.getLogger("backup_permission_sets")
 
@@ -54,23 +55,27 @@ def dump_permission_set(sso, instance_arn, ps_arn):
         "CustomerManagedPolicyReferences",
         InstanceArn=instance_arn, PermissionSetArn=ps_arn,
     )
+    # Narrow exception handling (Task C1): only swallow "not configured",
+    # let AccessDenied / throttling etc. surface.
+    _swallow = ("ResourceNotFoundException",)
     try:
         inline = sso.get_inline_policy_for_permission_set(
             InstanceArn=instance_arn, PermissionSetArn=ps_arn,
         ).get("InlinePolicy", "")
-    except Exception:  # noqa: BLE001
+    except ClientError as e:
+        if e.response["Error"]["Code"] not in _swallow:
+            raise
         inline = ""
     try:
         boundary = sso.get_permissions_boundary_for_permission_set(
             InstanceArn=instance_arn, PermissionSetArn=ps_arn,
         ).get("PermissionsBoundary")
-    except Exception:
+    except ClientError as e:
+        if e.response["Error"]["Code"] not in _swallow:
+            raise
         boundary = None
-    try:
-        tags = paginate(sso, "list_tags_for_resource", "Tags",
-                        InstanceArn=instance_arn, ResourceArn=ps_arn)
-    except Exception:
-        tags = []
+    tags = paginate(sso, "list_tags_for_resource", "Tags",
+                    InstanceArn=instance_arn, ResourceArn=ps_arn)
 
     return {
         "Name": ps["Name"],

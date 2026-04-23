@@ -109,8 +109,10 @@ def apply_permission_set(sso, instance_arn, ps, existing, dry_run):
         try:
             sso.delete_inline_policy_from_permission_set(
                 InstanceArn=instance_arn, PermissionSetArn=arn)
-        except ClientError:
-            pass
+        except ClientError as e:
+            # Only swallow "nothing to delete"; re-raise real errors (AccessDenied etc.).
+            if e.response["Error"]["Code"] not in ("ResourceNotFoundException",):
+                raise
 
     # Permissions boundary
     boundary = ps.get("PermissionsBoundary")
@@ -122,8 +124,49 @@ def apply_permission_set(sso, instance_arn, ps, existing, dry_run):
         try:
             sso.delete_permissions_boundary_from_permission_set(
                 InstanceArn=instance_arn, PermissionSetArn=arn)
-        except ClientError:
-            pass
+        except ClientError as e:
+            if e.response["Error"]["Code"] not in ("ResourceNotFoundException",):
+                raise
+
+    # Reconcile tags (Task C3)
+    current_tags_list = paginate(
+        sso, "list_tags_for_resource", "Tags",
+        InstanceArn=instance_arn, ResourceArn=arn,
+    )
+    current_tags = {t["Key"]: t["Value"] for t in current_tags_list}
+    desired_tags = {t["Key"]: t["Value"] for t in (ps.get("Tags") or [])}
+    to_add = [{"Key": k, "Value": v} for k, v in desired_tags.items()
+              if current_tags.get(k) != v]
+    to_remove = [k for k in current_tags if k not in desired_tags]
+    if to_add:
+        sso.tag_resource(InstanceArn=instance_arn, ResourceArn=arn, Tags=to_add)
+    if to_remove:
+        sso.untag_resource(InstanceArn=instance_arn, ResourceArn=arn, TagKeys=to_remove)
+
+    # Provision to push policy changes to existing assignments (Task B1).
+    # Only needed if the PS is already assigned anywhere; otherwise skip.
+    assigned_accounts = paginate(
+        sso, "list_accounts_for_provisioned_permission_set", "AccountIds",
+        InstanceArn=instance_arn, PermissionSetArn=arn,
+    )
+    if assigned_accounts:
+        log.info("provisioning %s across %d accounts", name, len(assigned_accounts))
+        resp = sso.provision_permission_set(
+            InstanceArn=instance_arn, PermissionSetArn=arn,
+            TargetType="ALL_PROVISIONED_ACCOUNTS",
+        )
+        req_id = resp["PermissionSetProvisioningStatus"]["RequestId"]
+        # Poll until SUCCEEDED/FAILED (bounded).
+        for _ in range(60):  # ~5 min max at 5s intervals
+            status = sso.describe_permission_set_provisioning_status(
+                InstanceArn=instance_arn, ProvisionPermissionSetRequestId=req_id,
+            )["PermissionSetProvisioningStatus"]
+            if status["Status"] == "SUCCEEDED":
+                break
+            if status["Status"] == "FAILED":
+                log.error("provision %s failed: %s", name, status.get("FailureReason"))
+                break
+            time.sleep(5)
 
 
 def main():

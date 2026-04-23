@@ -55,6 +55,23 @@ def export_users(ids_client, store_id):
         except Exception as exc:  # noqa: BLE001
             log.warning("describe_user failed for %s: %s", u.get("UserName"), exc)
             full.append(u)
+    # Task C8: detect UserName case collisions that would break downstream
+    # lookups (e.g. mist/restore.py lower-cases UserName as lookup key).
+    seen = {}
+    collisions = []
+    for u in full:
+        name = u.get("UserName", "")
+        key = name.lower()
+        if key in seen and seen[key] != name:
+            collisions.append((seen[key], name))
+        else:
+            seen[key] = name
+    if collisions:
+        log.error("UserName case collisions detected (will break restore lookups): %s", collisions)
+        raise SystemExit(
+            "Abort: source has UserName values that collide when lower-cased. "
+            "Clean up source before backup. Collisions: " + str(collisions)
+        )
     log.info("Exported %d users", len(full))
     return full
 
