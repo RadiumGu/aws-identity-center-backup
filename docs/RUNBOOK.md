@@ -200,6 +200,19 @@ cd /home/ubuntu/tech/identity-center-backup/backups/<YYYY-MM-DD>
 
 ### 5.2 Dry run（强烈建议先跑）
 
+在 mist restore 之前，先验证/映射 account id（B2 最小实现）：
+```bash
+# 情形 A：源目标同一 Org—直接验证 account ids 都在
+cd /home/ubuntu/tech/identity-center-backup/backups/<YYYY-MM-DD>
+python3 ../../scripts/precheck_account_map.py --mode validate
+
+# 情形 B：跨 Org / 收到映射表
+# 先在 docs/account_id_map.example.json 基础上按实际映射填入 account_id_map.json
+python3 ../../scripts/precheck_account_map.py \
+    --mode rewrite --account-map account_id_map.json
+# 输出 UserAssignments.mapped.json / GroupAssignments.mapped.json — 后续给 mist restore
+```
+
 ```bash
 python3 ../../scripts/restore_users_groups.py --idc-id $TARGET_IDC_ID --dry-run
 python3 ../../scripts/restore_permission_sets.py --idc-arn $TARGET_IDC_ARN --dry-run
