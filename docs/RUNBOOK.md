@@ -278,6 +278,14 @@ python3 ../../scripts/kiro_restore_checklist.py \
 
 ### 6.X.3 TARGET 手动执行
 
+0. **就绪性检查**（建议在手动操作前跑）：
+   ```bash
+   export AWS_PROFILE=<target> AWS_DEFAULT_REGION=<region>
+   python3 ../../scripts/check_kiro_target_readiness.py \
+       --idc-arn $DST_IDC_ARN --idc-id $DST_IDC_ID --region <region> \
+       --source-snapshot KiroSubscriptions.json
+   # 检查：Target Kiro 已启用 / users+groups 名字能对上 / 席位缺口数量
+   ```
 1. **购买席位**：Amazon Q Developer / Kiro 控制台 → *Subscriptions* → 按清单 Step 1 的数字购买。仅控制台（或 Marketplace）可操作，无 API。
 2. **分配 users / groups**：Kiro → *Users & Groups* → *Add user* / *Add group*，按 Step 2 名单添加。
    - 因为 users/groups 前面已经由 `restore_users_groups.py` 或 SCIM 在 target Identity Center 里建好了，名字对得上。
@@ -289,6 +297,10 @@ python3 ../../scripts/kiro_restore_checklist.py \
 - `q:CreateAssignment` / `UpdateAssignment` 存在但从外部 SigV4 调用会返回 500（黑盒了解结果），*无法自动化批量分配*，只能控制台/点击。
 - 席位购买非免费 — 购买前确认账号账单/额度。
 - PENDING 状态的用户（未首次登录）迁移后仍需用户自己在 TARGET 侧完成首登。
+
+### 6.X.5 实验性：尝试自动化 assignment
+
+`scripts/try_kiro_create_assignment.py` 会尝试 4 种可能的私有 Coral 协议变种（q 路径 / q X-Amz-Target / user-subscriptions CreateUserSubscription / user-subscriptions CreateClaim），把请求和响应写到日志。授权闭合之前返回 500，失败就继续走 6.X.3 的手动流程。取论文化之后可直接批量调用。
 
 ---
 
