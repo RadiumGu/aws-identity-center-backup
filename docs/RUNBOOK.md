@@ -248,6 +248,50 @@ PY
 
 ---
 
+## 6.X Kiro 订阅（Kiro Power / Q Developer Pro 席位）
+
+> 关键点：*Kiro 席位分配没有公开 API*。备份 → 购买 → 手动分配 三步走。
+
+Kiro 控制台里 "Users" / "Groups" tab 展示的订阅状态走的是一个私有内部服务 *`user-subscriptions`*（代号 *Zorn*），不在 AWS CLI / boto3 / CloudFormation 里。
+
+### 6.X.1 SOURCE 备份
+
+```bash
+python3 ../../scripts/backup_kiro_subscriptions.py \
+    --idc-arn $SRC_IDC_ARN \
+    --region $SRC_REGION
+# 输出 KiroSubscriptions.json + 按 plan 分类的席位总数
+IAM 权限：调用方身份需要能读 Kiro 控制台（实际权限检查在私有 API，用的角色通常是 AdminstratorAccess 或同等权限）。
+```
+
+### 6.X.2 生成 TARGET 端手动执行清单
+
+```bash
+python3 ../../scripts/kiro_restore_checklist.py \
+    --input KiroSubscriptions.json \
+    > kiro-restore-checklist.md
+```
+
+这份 Markdown 清单包含：
+- *Step 1* 按 plan 类型（`KIRO_ENTERPRISE_PRO` / `KIRO_ENTERPRISE` / `Q_DEVELOPER_*` 等）的席位数量
+- *Step 2* 每种 plan 对应的 users + groups 列表，直接对照 Kiro 控制台 "Add user / Add group" 操作
+
+### 6.X.3 TARGET 手动执行
+
+1. **购买席位**：Amazon Q Developer / Kiro 控制台 → *Subscriptions* → 按清单 Step 1 的数字购买。仅控制台（或 Marketplace）可操作，无 API。
+2. **分配 users / groups**：Kiro → *Users & Groups* → *Add user* / *Add group*，按 Step 2 名单添加。
+   - 因为 users/groups 前面已经由 `restore_users_groups.py` 或 SCIM 在 target Identity Center 里建好了，名字对得上。
+3. **验证**：再跑一遍 `backup_kiro_subscriptions.py` 打到 target，和 SOURCE 快照按 plan 计数对比。
+
+### 6.X.4 已知限制 / 风险
+
+- `user-subscriptions` 是 *私有 / 未文档化 API*，AWS 随时可能变更或下线。备份脚本随诗可能突然不能用 — 出问题时做两件事：在 Kiro 控制台手动导出用户列表作为后备；或者指望 AWS 转公共。
+- `q:CreateAssignment` / `UpdateAssignment` 存在但从外部 SigV4 调用会返回 500（黑盒了解结果），*无法自动化批量分配*，只能控制台/点击。
+- 席位购买非免费 — 购买前确认账号账单/额度。
+- PENDING 状态的用户（未首次登录）迁移后仍需用户自己在 TARGET 侧完成首登。
+
+---
+
 ## 7. 切换 / 回滚
 
 ### 7.1 日常（两边都活）

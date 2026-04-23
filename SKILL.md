@@ -67,6 +67,10 @@ mkdir -p backups/$(date +%F) && cd backups/$(date +%F)
 python3 ../../scripts/backup_users_groups.py    --idc-id $SRC_IDC_ID
 python3 ../../scripts/backup_permission_sets.py --idc-arn $SRC_IDC_ARN
 python3 ../../upstream/mist/backup.py           --idc-id $SRC_IDC_ID --idc-arn $SRC_IDC_ARN
+# Kiro / Q Developer subscription snapshot (private API, audit/checklist only)
+python3 ../../scripts/backup_kiro_subscriptions.py --idc-arn $SRC_IDC_ARN --region <region>
+python3 ../../scripts/kiro_restore_checklist.py  --input KiroSubscriptions.json \
+        > kiro-restore-checklist.md
 ```
 
 ### Restore (run against TARGET, always `--dry-run` first)
@@ -79,6 +83,13 @@ python3 ../../scripts/restore_permission_sets.py --idc-arn $DST_IDC_ARN --dry-ru
 python3 ../../scripts/restore_users_groups.py    --idc-id $DST_IDC_ID
 python3 ../../scripts/restore_permission_sets.py --idc-arn $DST_IDC_ARN
 python3 ../../upstream/mist/restore.py           --idc-id $DST_IDC_ID --idc-arn $DST_IDC_ARN
+
+# Kiro subscription restore is MANUAL — follow kiro-restore-checklist.md:
+#   1. Amazon Q Developer / Kiro console → Subscriptions → purchase seats
+#      per the plan/seat table (Step 1).
+#   2. Kiro → Users & Groups → Add user / Add group per Step 2.
+# Then snapshot the target for verification:
+python3 ../../scripts/backup_kiro_subscriptions.py --idc-arn $DST_IDC_ARN --region <region>
 ```
 
 ### Validation
@@ -107,6 +118,11 @@ Re-bind Kiro (or any downstream SCIM consumer) to the target Identity Center.
 
 - Passwords and MFA devices cannot be exported — users will receive an
   invitation email and must re-enroll MFA in the new instance.
+- **Kiro / Q Developer subscription assignment has no public API.** The
+  source-side snapshot uses the private `user-subscriptions` ("Zorn") API
+  via SigV4; the target-side restore is a MANUAL console flow (purchase
+  seats in Amazon Q Developer / Kiro console, then Add user / Add group).
+  The `kiro_restore_checklist.py` script produces the operator checklist.
 - Application assignments for third-party apps (incl. Kiro itself) may cache
   UserId/GroupId; downstream apps typically need re-binding, not just
   restore. Coordinate with the app vendor.
