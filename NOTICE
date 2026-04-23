@@ -1,0 +1,17 @@
+# NOTICE
+
+This repository vendors two AWS Samples projects under `upstream/` to keep the
+runbook self-contained. They retain their original licenses.
+
+## upstream/mist/
+Source: https://github.com/aws-samples/manage-identity-source-transition-for-aws-iam-identity-center
+License: MIT-0 (see upstream/mist/LICENSE)
+Copyright: Amazon.com, Inc. or its affiliates.
+
+## upstream/ic-extensions/
+Source: https://github.com/aws-samples/aws-iam-identity-center-extensions
+License: MIT-0 (see upstream/ic-extensions/LICENSE)
+Copyright: Amazon.com, Inc. or its affiliates.
+
+No modifications were made to upstream files. Refer to each upstream repo for
+the latest versions.

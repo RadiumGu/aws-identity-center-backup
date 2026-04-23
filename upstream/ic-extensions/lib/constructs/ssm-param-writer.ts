@@ -1,0 +1,53 @@
+/**
+ * Custom SSM writer construct that facilitates cross account/cross region
+ * reading through the SSMParamReader construct
+ */
+
+import { AccountPrincipal, Role } from "aws-cdk-lib/aws-iam";
+import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { Construct } from "constructs";
+import { BuildConfig } from "../build/buildConfig";
+import { name } from "./helpers";
+
+export interface SSMParamWriterProps {
+  readonly ParamNameKey: string;
+  readonly ParamValue: string;
+  readonly ReaderAccountId: string;
+}
+
+export class SSMParamWriter extends Construct {
+  public readonly parameter: StringParameter;
+  public readonly parameterReaderRole: Role;
+
+  constructor(
+    scope: Construct,
+    id: string,
+    buildConfig: BuildConfig,
+    ssmParamWriterProps: SSMParamWriterProps,
+  ) {
+    super(scope, id);
+
+    this.parameter = new StringParameter(
+      this,
+      name(buildConfig, ssmParamWriterProps.ParamNameKey),
+      {
+        parameterName: name(buildConfig, ssmParamWriterProps.ParamNameKey),
+        stringValue: ssmParamWriterProps.ParamValue,
+      },
+    );
+
+    this.parameterReaderRole = new Role(
+      this,
+      name(buildConfig, `${ssmParamWriterProps.ParamNameKey}-readerRole`),
+      {
+        roleName: name(
+          buildConfig,
+          `${ssmParamWriterProps.ParamNameKey}-readerRole`,
+        ),
+        assumedBy: new AccountPrincipal(ssmParamWriterProps.ReaderAccountId),
+      },
+    );
+
+    this.parameter.grantRead(this.parameterReaderRole);
+  }
+}

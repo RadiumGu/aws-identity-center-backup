@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "Link-S3",
+  "type": "object",
+  "title": "Link-S3",
+  "description": "Schemea for link create/delete through S3 interface.",
+  "required": ["linkData"],
+  "properties": {
+    "linkData": {
+      "$id": "#/properties/linkData",
+      "type": "string",
+      "title": "Link ojbect",
+      "description": "Link object",
+      "oneOf": [
+        {
+          "pattern": "root%all%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,1024}%GROUP%ssofile"
+        },
+        {
+          "pattern": "root%all%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,128}%USER%ssofile"
+        },
+        {
+          "pattern": "ou_id%ou-[a-z0-9]{4}-[a-z0-9]{8}%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,1024}%GROUP%ssofile"
+        },
+        {
+          "pattern": "ou_id%ou-[a-z0-9]{4}-[a-z0-9]{8}%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,128}%USER%ssofile"
+        },
+        {
+          "pattern": "account%\\d{12}%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,1024}%GROUP%ssofile"
+        },
+        {
+          "pattern": "account%\\d{12}%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,128}%USER%ssofile"
+        },
+        {
+          "pattern": "account_tag%[\\w+=,.@-]{1,128}\\^[\\w+=,.@-]{1,256}%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,1024}%GROUP%ssofile"
+        },
+        {
+          "pattern": "account_tag%[\\w+=,.@-]{1,128}\\^[\\w+=,.@-]{1,256}%[\\w+=,.@-]{1,32}%[_\\-\\p{L}\\p{M}\\p{S}\\p{N}+@.]{1,128}%USER%ssofile"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}
